@@ -101,6 +101,7 @@ class App < Admiral::Command
   class ClearResults < Admiral::Command
     def run
       DB.open(ENV["DATABASE_URL"]) do |db|
+        db.exec "DELETE FROM frameworks;"
         db.exec "DELETE FROM metrics;"
         db.exec "DELETE FROM values;"
       end
