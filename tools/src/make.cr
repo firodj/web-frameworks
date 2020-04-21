@@ -21,6 +21,7 @@ class App < Admiral::Command
     define_flag docker_options : String, description: "extra argument to docker cli", default: "", long: "docker-options"
     define_flag keep : Bool, description: "keep container after build (default : false)", default: false, long: "keep"
     define_flag local_port : UInt16, description: "bind docker port 3000 to localhost port (docker desktop)", default: 0_u16, long: "local-port"
+    define_flag osx : Bool, description: "use osx xargs parameters", default: false, long: "osx"
 
     def run
       frameworks = {} of String => Array(String)
@@ -248,7 +249,11 @@ class App < Admiral::Command
                   yaml.scalar "docker build -t #{language}.#{name} . #{flags.docker_options}"
 
                   # Run container, and store IP
-                  yaml.scalar "docker run #{container_expose} -td #{language}.#{name} | xargs -i docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' {} > ip.txt"
+                  unless flags.osx
+                  yaml.scalar "docker run #{container_expose} -td #{language}.#{tool} | xargs -i docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' {} > ip.txt"
+                  else
+                  yaml.scalar "docker run #{container_expose} -td #{language}.#{tool} | xargs -n 1 docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' > ip.txt"
+                  end
 
                   # Launch sieging
                   unless flags.without_sieger
@@ -264,7 +269,11 @@ class App < Admiral::Command
 
                   # Drop the container
                   unless flags.keep
+                    unless flags.osx
                     yaml.scalar "docker ps -a -q  --filter ancestor=#{language}.#{tool}  | xargs -r docker rm -f"
+                    else
+                    yaml.scalar "docker ps -a -q  --filter ancestor=#{language}.#{tool}  | xargs -n 1 docker rm -f"
+                    end
                   end
                 end
                 yaml.scalar "dir"
